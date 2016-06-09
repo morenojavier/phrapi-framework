@@ -1,3 +1,513 @@
+# Framework PHRAPI
+ 
+## ¿Qué es PHRAPI?
+
+Phrapi es un framework que ayuda y facilita a la interacción de las bases de datos. El framework esta basado en PHP y la estructura de bases de datos es SQL.
+
+Phrapi no obliga a seguir un modo de trabajar, salvo el tema de **controles**, en lo que es necesario usar clases, guardarlas en una ubicación en específico y ejecutar los controles con sus métodos desde `$factory`. Se describe más adelante.
+
+Aunque no se obliga a trabajar de un modo, es preferible seguir una convención para organizar el código y funcionamiento de una misma forma y así no complicar su entendimiento.
+
+La convención es usar un modelo HMVC, en donde una *página (H)* puede ejecutar uno o más controles, el *modelo (M)* puede ser directamente trabajar con la base de datos o usar medoo, las *vistas (V)* serán archivos que se guardarán en *views/* con el nombre del control y el nombre del método, y los *controles (C)* contendrá toda la programación y se guardarán en *phrapi/controllers/*
+
+## Estructura de los archivos a manipular.
+
+ *  index.php
+ *  phrapi/config.php
+ *  phrapi/controllers/Demo.php
+ *  phrapi/controllers/DemoUsuarios.php
+ *  views/demousuarios.php
+ *  views/demousuarios_edicion.php
+
+Aunque una página puede ejecutar varios controles a la vez, un control se convierte en el primario, para nuestro ejemplo la acción principal es listar los registros de usuarios de la base de datos *tutorial_db* donde la tabla usuarios contiene las columnas de id (*id_usuario*), el nombre del usuario (*usuario*), el correo electrónico (*mail*), la ocupación (*ocupacion*) y el status del usuario (*status*), que debe aparecerle.
+
+Se comparte la base de datos del ejemplo en cuestión.
+
+ *  tutorial_db.sql
+
+## Configuración - phrapi/config.php
+
+Lo primero será configurar nuestro archivo config.php de acuerdo a nuestros parámetros y la conexión a la base de datos. La configuración es un arreglo en que se le establecen las distintas banderas con las que funciona el framework, dentro de este arreglo nos encontramos con el índice servers el cual se destruye al iniciar la ejecución, esto se hace primero buscando un índice en servers con el nombre del dominio desde donde se está ejecutando, por ejemplo teniendo la siguiente configuración:
+
+```php
+<?php defined("PHRAPI") or die("Direct access not allowed!");
+
+$config = [
+	'gmt' => '-05:00',
+	'locale' => 'es_MX',
+	'php_locale' => 'es_MX',
+	'timezone' => 'America/Mexico_City',
+	'offline' => false,
+	'servers' => [
+		'YOUR-DOMAIN' => [
+			'url' => 'http://YOUR-DOMAIN/YOUR-INSTALL-PATH/',
+			'urlssl' => 'https://YOUR-DOMAIN/YOUR-INSTALL-PATH/',
+			'db' => [
+				[
+					'host' => 'localhost',
+					'name' => 'base_de_datos',
+                    'user' => 'usuario',
+                    'pass' => 'contraseña'
+				]
+			]
+		],
+	],
+	'smtp' => [
+		'host' => '',
+		'pass' => '',
+		'from' => [
+			'Contacto' => ''
+		]
+	],
+	'routing' => [
+
+	]
+];
+
+```
+
+Si el sistema estuviera corriendo desde *localhost*, el arreglo de configuración quedará así:
+
+```php
+$config = [
+	'gmt' => '-05:00',
+	'locale' => 'es_MX',
+	'php_locale' => 'es_MX',
+	'timezone' => 'America/Mexico_City',
+	'offline' => false,
+	'website' => 1,
+	'token_api' => '',
+	'url' => 'http://localhost/',
+	'db' => [
+		[
+			'host' => 'localhost',
+			'name' => 'base_de_datos',
+			'user' => 'usuario',
+			'pass' => 'contraseña'
+		],
+		'externo' => [
+			'host' => 'servidor_externo',
+			'name' => 'base_de_datos',
+			'user' => 'usuario',
+			'pass' => 'contraseña'
+		]
+	],
+	'smtp' => [
+		'host' => '',
+		'pass' => '',
+		'from' => [
+			'Contacto' => ''
+		]
+	],
+	'routing' => []
+];
+```
+
+De esta forma podemos correr el mismo sistema con distintas configuraciones dependiende el servidor sobre el que se esté ejecutando.
+
+
+Se creará la página que contendrá la ejecución del control, la página deberá estar recibiendo una variable sobre la que se establecerá la acción o método que deberá ejecutar del control, donde por defecto será *index.php*. Dentro de la página en el área destinada para correr el control se mandará ejectuar su método, se obtendrá su resultado y se intentará incluir su vista para que presente la información de las variables devueltas por el control.
+
+## index.php
+
+```php
+<? include_once 'phrapi/index.php' ?>
+<? $demo = $factory->Demo ?>
+
+<? $usuario = $factory->DemoUsuario ?>
+<? $accion = getString('accion', 'index') ?>
+
+<!DOCTYPE html>
+<html lang="">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><?=$demo->name?></title>
+
+<!-- Bootstrap CSS -->
+<link href="//netdna.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+
+<link rel="stylesheet" href="font-awesome/css/font-awesome.min.css">
+
+<!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+<!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+<!--[if lt IE 9]>
+<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+<script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+<![endif]-->
+</head>
+<body>
+<h1 class="text-center">Hola <?=$demo->name?></h1>
+
+
+<div class="container">
+<? $result = $factory->DemoUsuario->{$accion}() ?>
+<? //D($result) ?>
+<? if (file_exists("views/demousuario_{$accion}.php")) include_once "views/demousuario_{$accion}.php" ?>
+
+</div>
+
+<!-- jQuery -->
+<script src="//code.jquery.com/jquery.js"></script>
+<!-- Bootstrap JavaScript -->
+<script src="//netdna.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+</body>
+</html>
+
+```
+
+## Vista listado - El controlador y su vista
+
+Generaremos el listado de nuestros registros de usuarios donde en primera instancia definimos las clases y posteriormente la vista de como se mostrará. 
+
+Archivo *phrapi/controllers/DemoUsuario.php*
+
+```php
+<?php defined('PHRAPI') or die("Direct access not allowed!");
+
+class DemoUsuario {
+    private $db;
+
+    public function __construct(){
+        $this->db = DB::getInstance();
+    }
+
+    public function index() {
+        $navigation = $this->db->getNavigation([
+            'per_page' => getInt('per_page', 10),
+            'sql_total' => 'SELECT COUNT(*) FROM usuarios'
+        ]);
+
+        $items = $this->db->queryAll("
+            SELECT * FROM usuarios {$navigation->limit}
+        ");
+
+        return compact('navigation', 'items');
+    }
+
+    public function edicion() {
+        $id = getInt('id_usuario');
+
+        $registro = new stdClass;
+        if($id) {
+            $registro = $this->db->queryRow("
+                SELECT
+                    *
+                FROM
+                    usuarios
+                WHERE
+                    id_usuario = '{$id}'
+            ");
+        }
+
+        $opciones = [
+            'status' => ['Todos'] + $this->db->getEnumOptions("usuarios",'status')
+        ];
+
+        return compact('registro', 'opciones');
+    }
+
+    public function guardar() {
+        $datos = [
+            ':id_usuario' => postInt('id_usuario'),
+            ':usuario' => postString('usuario'),
+            ':mail' => postString('mail'),
+            ':ocupacion' => postString('ocupacion'),
+            ':status' => postString('status')
+        ];
+        
+        if ($datos[':id_usuario']) {
+            $this->db->query("
+                UPDATE usuarios SET
+                    usuario = :usuario,
+                    mail = :mail,
+                    ocupacion = :ocupacion,
+                    status = :status
+                WHERE
+                    id_usuario = :id_usuario
+            ", $datos);
+        } else {
+            unset($datos[':id_usuario']);
+            $this->db->query("
+                INSERT INTO usuarios SET
+                    usuario = :usuario,
+                    mail = :mail,
+                    ocupacion = :ocupacion,
+                    status = :status
+            ", $datos);
+
+            $datos[':id_usuario'] = $this->db->getLastID();
+        }
+
+        redirect("index.php");
+    }
+
+    public function borrar() {
+    $id = getInt('id_usuario');
+
+    if ($id) {
+        $this->db->query("DELETE FROM usuarios WHERE id_usuario = '{$id}'");
+    }
+
+    redirect("index.php");
+}
+
+}
+```
+	
+Archivo *views/demousuario_index.php*
+
+```php
+
+<!-- Breadcrumbs line -->
+<div class="crumbs">
+    <div>
+        <a class="btn btn-lg btn-success" href="index.php?accion=edicion">
+            <span class="fa fa-plus"></span> Crear usuario
+        </a>
+    </div>
+</div>
+
+
+<table class="table table-striped table-hover" id="sample-table-2">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Ocupación</th>
+            <th>Status</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        <? foreach($result['items'] as $item): ?>
+        <tr>
+            <td><?=$item->id_usuario?></td>
+            <td><?=$item->usuario?></td>
+            <td><?=$item->mail?></td>
+            <td><?=$item->ocupacion?></td>
+            <td><?=$item->status?></td>
+            <td class="center">
+                <a href="index.php?accion=edicion&amp;id_usuario=<?=$item->id_usuario?>" class="btn btn-xs"><i class="fa fa-edit"></i></a>
+                <a href="phrapi/index.php?resource=demousuario/borrar&id_usuario=<?=$item->id_usuario?>" class="btn btn-xs"><i class="fa fa-times"></i></a>
+            </td>
+        </tr>
+        <? endforeach ?>
+    </tbody>
+    <tfoot>
+        <tr>
+            <td colspan="8">
+                <? include_once 'views/navigation.php' ?>
+            </td>
+        </tr>
+    </tfoot>
+</table>
+```
+
+Archivo *views/navigation.php*
+Agregamos una paginación funcional para la tabla de vista general.
+
+```php
+<table class="table">
+    <thead>
+        <tr>
+            <td colspan="3">
+                <?=$result['navigation']->items->starting?> a <?=$result['navigation']->items->ending?> de <?=$result['navigation']->total?>
+            </td>
+            <td colspan="3" class="text-center">
+                <div class="dropdown">
+                    <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown">
+                        Elementos por Página <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a href="<?=$result['navigation']->link?>?per_page=10" tabindex="-1">10</a></li>
+                        <li><a href="<?=$result['navigation']->link?>?per_page=25" tabindex="-1">25</a></li>
+                        <li><a href="<?=$result['navigation']->link?>?per_page=50" tabindex="-1">50</a></li>
+                        <li><a href="<?=$result['navigation']->link?>?per_page=100" tabindex="-1">100</a></li>
+                        <li><a href="<?=$result['navigation']->link?>?per_page=250" tabindex="-1">250</a></li>
+                    </ul>
+                </div>
+            </td>
+            <td colspan="3" class="pull-right">
+                <ul class="pull-right pagination pagination-blue m-no">
+                    <?if($result['navigation']->offsets->previous >= 0):?>
+                    <li><a href="<?=$result['navigation']->link?>?offset=<?=$result['navigation']->offsets->previous?>"><i class="fa fa-chevron-left"></i></a></li>
+                    <?else:?>
+                    <li class="disabled"><a><i class="fa fa-chevron-left"></i></a></li>
+                    <?endif?>
+                    <?foreach ($result['navigation']->offsets->pages as $page => $offset):?>
+                    <li class="<?=$offset==$result['navigation']->offsets->actual?'active':''?>"><a href="<?=$result['navigation']->link?>?offset=<?=$offset?>"><?=$page?></a></li>
+                    <?endforeach?>
+                    <?if($result['navigation']->offsets->next < $result['navigation']->total):?>
+                    <li><a href="<?=$result['navigation']->link?>?offset=<?=$result['navigation']->offsets->next?>"><i class="fa fa-chevron-right"></i></a></li>
+                    <?else:?>
+                    <li class="disabled"><a><i class="fa fa-chevron-right"></i></a></li>
+                    <?endif?>
+                </ul>
+            </td>
+        </tr>
+    </thead>
+</table>
+```
+
+## Captura y Edicion
+
+Notaremos que fue agregada la función de edición al control del método que sirve para cargar los datos por defecto a mostrar en el formulario de edición/captura, en el caso de que se esté editando un elemento, cargamos los datos de ese elemento:
+
+```php
+…
+public function edicion() {
+    $id = getInt('id_usuario');
+
+    $registro = new stdClass;
+    if($id) {
+        $registro = $this->db->queryRow("
+            SELECT
+                *
+            FROM
+                usuarios
+            WHERE
+                id_usuario = '{$id}'
+        ");
+    }
+
+    $opciones = [
+        'status' => ['Todos'] + $this->db->getEnumOptions("usuarios",'status')
+    ];
+
+    return compact('registro', 'opciones');
+}
+…
+```
+	
+Ahora agregamos la vista de edición, creamos el archivo *views/demousuario_edicion.php* y le ponemos el siguiente código:
+
+```php
+
+<!-- Breadcrumbs line -->
+<div class="crumbs">
+    <div>
+        <a class="btn btn-lg btn-success" href="index.php?accion=edicion">
+            <span class="fa fa-plus"></span> Crear usuario
+        </a>
+    </div>
+</div>
+
+
+<table class="table table-striped table-hover" id="sample-table-2">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Ocupación</th>
+            <th>Status</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        <? foreach($result['items'] as $item): ?>
+        <tr>
+            <td><?=$item->id_usuario?></td>
+            <td><?=$item->usuario?></td>
+            <td><?=$item->mail?></td>
+            <td><?=$item->ocupacion?></td>
+            <td><?=$item->status?></td>
+            <td class="center">
+                <a href="index.php?accion=edicion&amp;id_usuario=<?=$item->id_usuario?>" class="btn btn-xs"><i class="fa fa-edit"></i></a>
+                <a href="phrapi/index.php?resource=demousuario/borrar&id_usuario=<?=$item->id_usuario?>" class="btn btn-xs"><i class="fa fa-times"></i></a>
+            </td>
+        </tr>
+        <? endforeach ?>
+    </tbody>
+    <tfoot>
+        <tr>
+            <td colspan="8">
+                <? include_once 'views/navigation.php' ?>
+            </td>
+        </tr>
+    </tfoot>
+</table>
+```
+
+## Creación y Actualización
+
+Agregamos la ruta en *phrapi/config.php* para permitir la ejecución del método `guardar` de forma externa.
+
+```php
+'routing' => [
+	…
+	'demousuario/guardar' => ['controller' => 'DemoUsuario', 'action' => 'guardar'],
+]
+```
+
+Agregamos el siguiente código a *phrapi/controllers/DemoUsuario.php*:
+
+```php
+public function guardar() {
+    $datos = [
+        ':id_usuario' => postInt('id_usuario'),
+        ':usuario' => postString('usuario'),
+        ':mail' => postString('mail'),
+        ':ocupacion' => postString('ocupacion'),
+        ':status' => postString('status')
+    ];
+    
+    if ($datos[':id_usuario']) {
+        $this->db->query("
+            UPDATE usuarios SET
+                usuario = :usuario,
+                mail = :mail,
+                ocupacion = :ocupacion,
+                status = :status
+            WHERE
+                id_usuario = :id_usuario
+        ", $datos);
+    } else {
+        unset($datos[':id_usuario']);
+        $this->db->query("
+            INSERT INTO usuarios SET
+                usuario = :usuario,
+                mail = :mail,
+                ocupacion = :ocupacion,
+                status = :status
+        ", $datos);
+
+        $datos[':id_usuario'] = $this->db->getLastID();
+    }
+
+    redirect("index.php");
+}
+```
+
+
+## Borrado
+
+Agregamos la ruta en *phrapi/config.php* para permitir la ejecución del método `borrar` de forma externa.
+
+```php
+'routing' => [
+	…
+	'demousuario/borrar' => ['controller' => 'DemoUsuario', 'action' => 'borrar'],
+]
+```
+
+Agregamos el siguiente código a *phrapi/controllers/DemoUsuario.php*:
+
+```php
+public function borrar() {
+    $id = getInt('id_usuario');
+
+    if ($id) {
+        $this->db->query("DELETE FROM usuarios WHERE id_usuario = '{$id}'");
+    }
+
+    redirect("index.php");
+```
+
+
 # Controles
 Son clases donde se contiene la programación de las distintas acciones del sistema
 
@@ -237,82 +747,6 @@ Equivale a:
 ```php
 getValueFrom($_POST, $name, $default, FILTER_SANITIZE_STRING, $session_name, $callback);
 ```
-
-# Configuración, phrapi/config.php
-
-La configuración es un arreglo en que se le establecen las distintas banderas con las que funciona el framework, dentro de este arreglo nos encontramos con el índice *servers* el cual se destruye al iniciar la ejecución, esto se hace primero buscando un índice en *servers* con el nombre del dominio desde donde se está ejecutando, por ejemplo teniendo la siguiente configuración:
-
-```php
-$config = [
-	'gmt' => '-05:00',
-	'locale' => 'es_MX',
-	'php_locale' => 'es_MX',
-	'timezone' => 'America/Mexico_City',
-	'offline' => false,
-	'website' => 1,
-	'token_api' => '',
-	'servers' => [
-		'localhost' => [
-			'url' => 'http://localhost/',
-			'db' => [
-				[
-					'host' => 'localhost',
-					'name' => 'base_de_datos',
-					'user' => 'usuario',
-					'pass' => 'contraseña'
-				]
-			]
-		],
-	],
-	'smtp' => [
-		'host' => '',
-		'pass' => '',
-		'from' => [
-			'Contacto' => ''
-		]
-	],
-	'routing' => []
-];
-```
-
-Si el sistema estuviera corriendo desde *localhost*, el arreglo de configuración quedará así:
-
-```php
-$config = [
-	'gmt' => '-05:00',
-	'locale' => 'es_MX',
-	'php_locale' => 'es_MX',
-	'timezone' => 'America/Mexico_City',
-	'offline' => false,
-	'website' => 1,
-	'token_api' => '',
-	'url' => 'http://localhost/',
-	'db' => [
-		[
-			'host' => 'localhost',
-			'name' => 'base_de_datos',
-			'user' => 'usuario',
-			'pass' => 'contraseña'
-		],
-		'externo' => [
-			'host' => 'servidor_externo',
-			'name' => 'base_de_datos',
-			'user' => 'usuario',
-			'pass' => 'contraseña'
-		]
-	],
-	'smtp' => [
-		'host' => '',
-		'pass' => '',
-		'from' => [
-			'Contacto' => ''
-		]
-	],
-	'routing' => []
-];
-```
-
-De esta forma podemos correr el mismo sistema con distintas configuraciones dependiende el servidor sobre el que se esté ejecutando.
 
 # Base de Datos, phrapi/framework/libs/DB.php
 
@@ -652,302 +1086,3 @@ echo preg_replace("~(\d{4})/(\d{2})/(\d{2})~", "$3-$2-$1", "2015/02/21");
 Preferir el declarar los arreglos en su forma corta con `[]` en vez de `array()`.
 
 Los archivos de clases como en los controles no es obligatorio terminarlos con `?>` de hecho no se recomienda ponerlo para evitar llenar el sistema de saltos de línea innecesarios que se agregan en la mayoría de las veces en automático por los editores de código después de ingresar un `?>`.
-
-# Guía para hacer un CRUD con Phrapi
-
-Para explicar el funcionamiento de Phrapi el siguiente tutorial detallará el funcionamiento de un módulo que implementará un CRUD (CRUD Create Read Update Delete o en español ABC Alta Baja Cambio) para la tabla definida en el apartado de DB.
-
-## Archivos
-
- *  phrapi/controllers/DemoUsuarios.php
- *  views/demousuarios.php
- *  views/demousuarios_edicion.php
- *  demo.php
- 
-## Explicación
-
-Phrapi no obliga a seguir un modo de trabajar, salvo el tema de controles, en lo que es necesario usar clases, guardarlas en una ubicación en específico y ejecutar los controles con sus métodos desde `$factory`, lo que ya se explica al inicio de este documento.
-
-Aunque no se obliga a trabajar de un modo, es preferible seguir una convención para organizar el código y funcionamiento de una misma forma y así no complicar su entendimiento.
-
-La convención es usar un modelo HMVC, en donde una *página (H)* puede ejecutar uno o más controles, el *modelo (M)* puede ser directamente trabajar con la base de datos o usar medoo, las *vistas (V)* serán archivos que se guardarán en *views/* con el nombre del control y el nombre del método, y los *controles (C)* contendrá toda la programación y se guardarán en *phrapi/controllers/*
-
-Aunque una página puede ejecutar varios controles a la vez, un control se convierte en el primario, para nuestro ejemplo la acción principal es listar los registros de la tabla *the_users* pero en la misma pantalla querremos mostrar el nombre del usuario que está usando el sistema y el menu que deberá aparecerle.
-
-El primer paso será crear la página que contendrá la ejecución del control, la página deberá estar recibiendo una variable sobre la que se establecerá la acción o método que deberá ejecutar del control, donde por defecto será *index*. Dentro de la página en el área destinada para correr el control se mandará ejectuar su método, se obtendrá su resultado y se intentará incluir su vista para que presente la información de las variables devueltas por el control.
-
-## Página: demo.php
-
-```php
-<? include_once 'phrapi/index.php' ?>
-<? $accion = getString('accion', 'index') ?>
-<!DOCTYPE html>
-<html lang="">
-	<head>
-		<meta charset="utf-8">
-		<meta http-equiv="X-UA-Compatible" content="IE=edge">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>Demo</title>
-
-		<!-- Bootstrap CSS -->
-		<link href="//netdna.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
-
-		<!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
-		<!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
-		<!--[if lt IE 9]>
-			<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
-			<script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
-		<![endif]-->
-	</head>
-	<body>
-		<h1 class="text-center">Demo</h1>
-
-		<? $result = $factory->DemoUsuarios->{$accion()} ?>
-		<? if (file_exists("views/demousuarios_{$accion}.php")) include_once "views/demousuarios_{$accion}.php" ?>
-
-		<!-- jQuery -->
-		<script src="//code.jquery.com/jquery.js"></script>
-		<!-- Bootstrap JavaScript -->
-		<script src="//netdna.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
-	</body>
-</html>
-```
-
-## Listado
-
-Archivo *phrapi/controllers/DemoUsuario.php*
-
-```php
-<?php defined('PHRAPI') or die("Direct access not allowed!");
-
-class DemoUsuario {
-	private $db;
-
-	public function __construct(){
-		$this->db = DB::getInstance();
-	}
-
-	}
-	public function index() {
-		$navigation = $this->db->getNavigation([
-			'per_page' => getInt('per_page', 10),
-			'sql_total' => 'SELECT COUNT(*) FROM the_users'
-		]);
-
-		$items = $this->db->queryAll("
-			SELECT * FROM the_users {$navigation->limit}
-		");
-
-		return compact('navigation', 'items');
-	}
-}
-```
-	
-Archivo *views/demousuario_index.php*
-
-```php
-<table class="table table-striped table-hover" id="sample-table-2">
-	<thead>
-		<tr>
-			<th>Nombre</th>
-			<th>Estatus</th>
-			<th>Creado</th>
-			<th></th>
-		</tr>
-	</thead>
-	<tbody>
-		<? foreach($result['items'] as $item): ?>
-		<tr>
-			<td><?=$item->name?></td>
-			<td><?=$item->status?></td>
-			<td><?=$item->created_at?></td>
-			<td class="center">
-				<a href="demo.php?accion=edicion&amp;id=<?=$item->id?>" class="btn btn-xs"><i class="fa fa-edit"></i></a>
-				<a href="phrapi/demousuario/borrar?id=<?=$item->id?>" class="btn btn-xs"><i class="fa fa-times"></i></a>
-			</td>
-		</tr>
-		<? endforeach ?>
-	</tbody>
-	<tfoot>
-		<tr>
-			<td colspan="8">
-				<? include_once 'views/navigation.php' ?>
-			</td>
-		</tr>
-	</tfoot>
-</table>
-```
-
-Archivo *views/navigation.php*
-
-```php
-<table class="table">
-	<thead>
-		<tr>
-			<td colspan="3">
-				<?=$result['navigation']->items->starting?> a <?=$result['navigation']->items->ending?> de <?=$result['navigation']->total?>
-			</td>
-			<td colspan="3" class="text-center">
-				<div class="dropdown">
-					<button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown">
-						Elementos por Página <span class="caret"></span>
-					</button>
-					<ul class="dropdown-menu">
-						<li><a href="<?=$result['navigation']->link?>?per_page=10" tabindex="-1">10</a></li>
-						<li><a href="<?=$result['navigation']->link?>?per_page=25" tabindex="-1">25</a></li>
-						<li><a href="<?=$result['navigation']->link?>?per_page=50" tabindex="-1">50</a></li>
-						<li><a href="<?=$result['navigation']->link?>?per_page=100" tabindex="-1">100</a></li>
-						<li><a href="<?=$result['navigation']->link?>?per_page=250" tabindex="-1">250</a></li>
-					</ul>
-				</div>
-			</td>
-			<td colspan="3" class="pull-right">
-				<ul class="pull-right pagination pagination-blue m-no">
-					<?if($result['navigation']->offsets->previous >= 0):?>
-					<li><a href="<?=$result['navigation']->link?>?offset=<?=$result['navigation']->offsets->previous?>"><i class="fa fa-chevron-left"></i></a></li>
-					<?else:?>
-					<li class="disabled"><a><i class="fa fa-chevron-left"></i></a></li>
-					<?endif?>
-					<?foreach ($result['navigation']->offsets->pages as $page => $offset):?>
-					<li class="<?=$offset==$result['navigation']->offsets->actual?'active':''?>"><a href="<?=$result['navigation']->link?>?offset=<?=$offset?>"><?=$page?></a></li>
-					<?endforeach?>
-					<?if($result['navigation']->offsets->next < $result['navigation']->total):?>
-					<li><a href="<?=$result['navigation']->link?>?offset=<?=$result['navigation']->offsets->next?>"><i class="fa fa-chevron-right"></i></a></li>
-					<?else:?>
-					<li class="disabled"><a><i class="fa fa-chevron-right"></i></a></li>
-					<?endif?>
-				</ul>
-			</td>
-		</tr>
-	</thead>
-</table>
-```
-
-## Captura y Edicion
-
-Agregamos al control el método de edición que sirve para cargar los datos por defecto a mostrar en el formulario de edición/captura, en el caso de que se esté editando un elemento, cargamos los datos de ese elemento:
-
-```php
-…
-public function edicion() {
-	$id = getInt('id');
-
-	$registro = new stdClass;
-	if($id) {
-		$registro = $this->db->queryRow("
-			SELECT
-				*
-			FROM
-				the_users
-			WHERE
-				id = '{$id}'
-		");
-	}
-
-	$opciones = [
-		'status' => ['Todos'] + $this->db->getEnumOptions("the_users",'status')
-	];
-
-	return compact('registro', 'opciones');
-}
-…
-```
-	
-Ahora agregamos la vista de edición, creamos el archivo *views/demousuario_edicion.php* y le ponemos el siguiente código:
-
-```php
-<form role="form" class="form-horizontal" action="phrapi/demousuario/guardar" method="POST" id="frm-edicion">
-	<input type="hidden" name="id" id="id" value="<?=@$result['registro']->id?>">
-
-	<div class="form-group">
-		<label class="col-sm-3 control-label">
-			Nombre
-		</label>
-		<div class="col-sm-8">
-			<input type="text" name="name" class="form-control" value="<?=@$result['registro']->name?>" data-validate='required'>
-		</div>
-	</div>
-	<div class="form-group">
-		<label class="col-sm-3 control-label">
-			Estatus
-		</label>
-		<div class="col-sm-8">
-			<select name="status" class="form-control" data-validate='required'>
-				<? Html::Options($result['opciones']['status'], @$result['registro']->status) ?>
-			</select>
-		</div>
-	</div>
-
-	<a href="demo.php" class="btn btn-default">Cancelar y Regresar</a>
-</form>
-```
-
-## Creación y Actualización
-
-Agregamos la ruta en *phrapi/config.php* para permitir la ejecución del método `guardar` de forma externa.
-
-```php
-'routing' => [
-	…
-	'demousuario/guardar' => ['controller' => 'DemoUsuario', 'action' => 'guardar'],
-]
-```
-
-Agregamos el siguiente código a *phrapi/controllers/DemoUsuario.php*:
-
-```php
-public function guardar() {
-	$datos = [
-		':id' => postInt('id'),
-		':name' => postString('name'),
-		':status' => postString('status')
-	];
-
-	if ($datos[':id']) {
-		$this->db->query("
-			UPDATE the_users SET
-				name = :name,
-				status = :status
-			WHERE
-				id = :id
-		", $datos);
-	} else {
-		$this->db->query("
-			INSERT INTO the_users SET
-				name = :name,
-				status = :status,
-				created_at = NOW()
-		", $datos);
-
-		$datos[':id'] = $this->db->getLastID();
-	}
-
-	redirect("demo.php");
-}
-```
-
-
-## Borrado
-
-Agregamos la ruta en *phrapi/config.php* para permitir la ejecución del método `borrar` de forma externa.
-
-```php
-'routing' => [
-	…
-	'demousuario/borrar' => ['controller' => 'DemoUsuario', 'action' => 'borrar'],
-]
-```
-
-Agregamos el siguiente código a *phrapi/controllers/DemoUsuario.php*:
-
-```php
-public function borrar() {
-	$id = getInd('id');
-
-	if ($id) {
-		$this->db->query("DELETE FROM the_users WHERE id = '{$id}'");
-	}
-
-	redirect("demo.php");
-}
-```
